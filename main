@@ -1,0 +1,102 @@
+//@version=5
+strategy("Multi-Indicator Strategy", overlay=true)
+
+// Define variables
+len1 = input(50)
+len2 = input(200)
+devFactor = input(3.0)
+rsiLength = input(9)
+overbought = input(80)
+oversold = input(10)
+maCrossoverLen = input(20)
+stochasticOversell = input(20)
+donchianChannelLen = input(40)
+donchianChannelPercent = input(50)
+
+// Calculate the moving averages (MA) and Bollinger bands
+maShort = ta.sma(close, len1)
+maLong = ta.sma(close, len2)
+upperBand = maLong + devFactor * ta.stdev(close, len2)
+lowerBand = maLong - devFactor * ta.stdev(close, len2)
+
+// Calculate the RSI and stochastic oscillator
+rsi = ta.rsi(close, rsiLength)
+stochasticK = ta.sma((high - low) / (high + low), 14)
+stochasticD = ta.sma(stochasticK, 3)
+
+// Plot the buy and sell signals
+if (close > upperBand and close[1] <= upperBand and rsi < overbought)
+    strategy.entry("Long", strategy.long)
+if (close < lowerBand and close[1] >= lowerBand and rsi > oversold)
+    strategy.entry("Short", strategy.short)
+
+// Add a MA crossover signal
+maCrossover = ta.crossover(maShort, maLong)
+if (maCrossover)
+    strategy.entry("Long", strategy.long)
+
+// Add a stochastic oscillator sell signal
+stochasticSell = ta.crossover(stochasticD, 20)
+if (stochasticSell)
+    strategy.entry("Short", strategy.short)
+
+// Add a donchian channel buy signal
+donchianBuy = ta.crossunder(maLong, maShort) and close > donchianChannelPercent * maLong
+if (donchianBuy)
+    strategy.entry("Long", strategy.long)
+
+// Add a stop loss and take profit
+stopLoss = close * 0.95
+takeProfit = close * 1.05
+
+if (strategy.position_size > 0)
+    strategy.exit("Long Exit", "Long", limit=takeProfit)
+if (strategy.position_size < 0)
+    strategy.exit("Short Exit", "Short", limit=stopLoss)
+
+// Add a trailing stop loss
+trailingStop = close * 1.01
+
+if (strategy.position_size > 0 and close >= trailingStop)
+    strategy.exit("Long Trailing Stop", "Long", limit=close - 10)
+if (strategy.position_size < 0 and close <= trailingStop)
+    strategy.exit("Short Trailing Stop", "Short", limit=close + 10)
+
+// Add a donchian channel sell signal
+donchianSell = ta.crossunder(maShort, maLong) and close < donchianChannelPercent * maLong
+if (donchianSell)
+    strategy.entry("Short", strategy.short)
+
+// MACD parameters
+macdLenFast = 12
+macdLenSlow = 26
+macdSigLen = 9
+
+// Calculate the MACD values
+[macdLine, signalLine, _] = ta.macd(close, macdLenFast, macdLenSlow, macdSigLen)
+
+// Add a MACD buy signal
+macdBullishSignal = ta.crossover(macdLine, signalLine)
+if (macdBullishSignal)
+    strategy.entry("Long", strategy.long)
+
+// Add a MACD sell signal
+macdBearishSignal = ta.crossunder(macdLine, signalLine)
+if (macdBearishSignal)
+    strategy.entry("Short", strategy.short)
+
+// Commodity Channel Index (CCI) parameters
+cciLen = 14
+
+// Calculate the CCI values
+cciValue = ta.cci(close, cciLen)
+
+// Add a CCI buy signal
+cciBuySignal = ta.crossover(cciValue, -100)
+if (cciBuySignal)
+    strategy.entry("Long", strategy.long)
+
+// Add a CCI sell signal
+cciSellSignal = ta.crossunder(cciValue, 100)
+if (cciSellSignal)
+    strategy.entry("Short", strategy.short)
